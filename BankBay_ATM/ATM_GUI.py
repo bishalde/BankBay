@@ -25,7 +25,6 @@ class AtmMachine(Tk):
                     _list.extend(item.winfo_children())
             return _list
 
-
     def __mainwindow(self,cardNumber):
         
         def ministatement(accountNumber,toAcccountNumber,reason,balance,amount):
@@ -199,14 +198,33 @@ class AtmMachine(Tk):
                 info(cardNumber)
 
                 mycol=mydb["BankBay_cardInformations"]
-                data=mycol.find({
-                        {"$or":[ 
+                data=mycol.find_one({
+                        "$or":[ 
                                 {"UPIId1":upiId} , 
                                 {"UPIID2":upiId} 
-                               ] 
-                        }
+                               ]     
                     })
-                print(data)
+                if data!=None:
+                    recvAccountNumber=data["accountNumber"]
+
+                    senderQuery=mycol.find_one({"cardNumber":cardNumber})
+                    senderAccountNumber=senderQuery["accountNumber"]
+
+                    mycol = mydb["BankBay_accountDetails"]
+                    balaquery=mycol.find_one({"accountNumber": int(senderAccountNumber)})
+                    balance=balaquery["balance"]
+
+                    mycol.update_one({"accountNumber": senderAccountNumber}, {"$inc": {"balance": -amount}})
+                    mycol.update_one({"accountNumber": recvAccountNumber}, {"$inc": {"balance": amount}})
+
+                    ministatement(senderAccountNumber,recvAccountNumber,"UPI Transaction",balance,amount)
+
+                    messagebox.showinfo("Transcation Successful","Done")
+                    self.__mainwindow(cardNumber)
+
+                else:
+                    messagebox.showerror("Transaction Failed","No Such UPI ID Found..!")
+                    self.__mainwindow(cardNumber)
 
 
             delete_all()
